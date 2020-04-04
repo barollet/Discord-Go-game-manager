@@ -24,7 +24,7 @@ impl ChallengeList {
             .0
             .entry(player)
             // Creates the vector if empty
-            .or_insert(Vec::new());
+            .or_insert_with(Vec::new);
         // This can be optimized
         if !challenges.contains(&other) {
             challenges.push(other);
@@ -43,7 +43,7 @@ impl ChallengeList {
     // Removes if present the given challenger from the player's challenge list
     // Does nothing if the player is not in the challenge list
     fn remove_from_list(&mut self, player_list: UserId, challenger: UserId) {
-        let challenges = self.0.entry(player_list).or_insert(Vec::new());
+        let challenges = self.0.entry(player_list).or_insert_with(Vec::new);
         // remove the player from challenges
         if let Some(index) = challenges.iter().position(|&elem| elem == challenger) {
             challenges.swap_remove(index);
@@ -53,7 +53,7 @@ impl ChallengeList {
     // Removes all the challenges concerning the given player
     pub fn remove_all(&mut self, player: UserId) {
         // Remove the given player from the list and take its current challenge list
-        let others = self.0.remove(&player).unwrap_or(Vec::new());
+        let others = self.0.remove(&player).unwrap_or_default();
 
         for other in others {
             // Remove the current player from the other's challenge list
@@ -63,16 +63,19 @@ impl ChallengeList {
 
     // List the current challenges for a player
     pub fn list(&self, player: UserId) -> Vec<UserId> {
-        self.0.get(&player).cloned().unwrap_or(Vec::new())
+        self.0.get(&player).cloned().unwrap_or_default()
     }
 
     // Removes a challenge from the list and returns a new game instance
     pub fn accept_challenge_to_game(&mut self, player: UserId, other: UserId) -> Option<GameInfo> {
         // If there is no challenge between the two players we returns nothing
-        let game_info = self
-            .0
-            .get(&player)
-            .map(|challenge_list| GameInfo::from_challenge(player, other));
+        let game_info = self.0.get(&player).and_then(|challenge_list| {
+            if challenge_list.contains(&other) {
+                Some(GameInfo::from_challenge(player, other))
+            } else {
+                None
+            }
+        });
 
         if game_info.is_some() {
             self.remove_challenge(player, other);

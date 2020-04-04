@@ -10,6 +10,7 @@ mod board;
 mod challenge;
 mod game;
 
+use crate::board::Intersection;
 use crate::challenge::*;
 use crate::game::*;
 
@@ -52,7 +53,7 @@ fn challenge(ctx: &mut Context, msg: &Message) -> CommandResult {
     let opponents = &msg.mentions;
     let channel = msg.channel_id;
 
-    if opponents.len() == 0 {
+    if opponents.is_empty() {
         channel.say(
             ctx,
             "You have to mention some people to challenge.\nExample: ~challenge @SinJinseo @KeJie",
@@ -106,7 +107,7 @@ fn list(ctx: &mut Context, msg: &Message) -> CommandResult {
         .map(|user| user.name)
         .collect();
 
-    if usernames.len() == 0 {
+    if usernames.is_empty() {
         channel.say(ctx, "You have no current pending challenges")?;
     } else {
         channel.say(
@@ -171,7 +172,7 @@ fn accept(ctx: &mut Context, msg: &Message) -> CommandResult {
 
 #[command]
 #[aliases(p)]
-fn play(ctx: &mut Context, msg: &Message) -> CommandResult {
+fn play(ctx: &mut Context, msg: &Message, args: Args) -> CommandResult {
     let player = msg.author.id;
     let channel = msg.channel_id;
 
@@ -179,22 +180,50 @@ fn play(ctx: &mut Context, msg: &Message) -> CommandResult {
     let games = data.get_mut::<GameList>().unwrap();
 
     // Checks that a game is played by you in this channel
-    let game = games.is_game_played_in_channel_by(player, channel);
-    let game = if game.is_none() {
+    let game_info = games.is_game_played_in_channel_by(player, channel);
+    let game_info = if game_info.is_none() {
         channel.say(&ctx, "You are not playing")?;
         return Ok(());
     } else {
-        game.unwrap();
+        game_info.unwrap()
     };
     // Checks that it is your turn
+    if !game_info.is_to_move(player) {
+        channel.say(&ctx, "Not your move")?;
+    }
+    // Parse the move
+    if args.len() != 1 {
+        channel.say(
+            &ctx,
+            "You have to specify a single coordinate.\nExample: ~p k10",
+        )?;
+        return Ok(());
+    }
+    let intersection = args.parse::<Intersection>();
+    let intersection = match intersection {
+        Ok(intersection) => intersection,
+        Err(_) => {
+            channel.say(&ctx, "Cannot parse your move")?;
+            return Ok(());
+        }
+    };
     // Plays the move
+    let legal_move = game_info.board.play(intersection);
+    if !legal_move {
+        channel.say(&ctx, "Illegal move")?;
+    } else {
+        // If the move is legal we update the board
+        // TODO update instead of printing
+        channel.say(&ctx, format!("{}", game_info.board))?;
+    }
 
     Ok(())
 }
 
 #[command]
 fn ping(ctx: &mut Context, msg: &Message) -> CommandResult {
-    msg.reply(ctx, "Pong!")?;
+    msg.reply(&ctx, "Pong!")?;
+    msg.reply(ctx, format!("coucou\n{}", crate::board::Board::new()))?;
 
     Ok(())
 }

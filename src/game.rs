@@ -7,7 +7,7 @@ use crate::board::Board;
 
 // Storing the current state of a game
 pub struct GameInfo {
-    board: Board,
+    pub board: Board,
     players: [UserId; 2],
 }
 impl GameInfo {
@@ -21,6 +21,10 @@ impl GameInfo {
     // Returns if a player is playing the current game
     pub fn is_player(&self, player: UserId) -> bool {
         self.players[0] == player || self.players[1] == player
+    }
+
+    pub fn is_to_move(&self, player: UserId) -> bool {
+        self.players[self.board.to_move as usize] == player
     }
 }
 
@@ -79,7 +83,7 @@ impl GameList {
     fn push_player_channel(&mut self, player: UserId, channel: ChannelId) {
         self.players
             .entry(player)
-            .or_insert(Vec::new())
+            .or_insert_with(Vec::new)
             .push(channel);
     }
 
