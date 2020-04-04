@@ -134,23 +134,19 @@ impl FromStr for Intersection {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut chars = s.chars();
-        let letter = chars.next().ok_or(())?;
-        // TODO
-        Ok(Intersection(0))
-        /*
-        let coords: Vec<&str> = s
-            .trim_matches(|p| p == '(' || p == ')')
-            .split(',')
-            .collect();
+        let letter = chars.next().ok_or(())?.to_ascii_lowercase();
+        let number: String = chars.collect();
 
-        let x_fromstr = coords[0].parse::<i32>()?;
-        let y_fromstr = coords[1].parse::<i32>()?;
-
-        Ok(Point {
-            x: x_fromstr,
-            y: y_fromstr,
-        })
-            */
+        let line: usize = number.parse().map_err(|_| ())?;
+        let mut column = letter as u8 - b'a';
+        if letter > 'i' {
+            column -= 1;
+        }
+        if column < 19 || line < 19 {
+            Ok(Intersection(line * 19 + column as usize))
+        } else {
+            Err(())
+        }
     }
 }
 
@@ -192,12 +188,23 @@ impl std::fmt::Display for Board {
             }
         }
 
-        // Prints board line
+        // Prints board lines
         for (i, stone) in self.stones.iter().enumerate() {
             // If new line
             if i % 19 == 0 {
                 write!(f, "\n{}", LETTER_CONVERTION[i / 19])?;
             }
+            write!(
+                f,
+                "{}",
+                match stone {
+                    Some(BLACK) => ":chestnut:",
+                    Some(WHITE) => ":cookie",
+                    None => {
+                        ":lol:"
+                    }
+                }
+            )?;
         }
 
         Ok(())
